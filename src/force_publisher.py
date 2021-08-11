@@ -7,10 +7,8 @@
 
 import rospy
 import sys
-from numpy import sin, cos, pi 
 
-from geometry_msgs.msg import Wrench, Vector3
-from std_msgs.msg import Int64
+from geometry_msgs.msg import Wrench
 
 class WrenchGenerator():
     '''

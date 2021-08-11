@@ -8,7 +8,7 @@
 
 import rospy
 import sys
-from numpy import sin, cos, pi 
+import numpy as np
 
 from geometry_msgs.msg import Wrench, Vector3
 from std_msgs.msg import Int64
@@ -24,16 +24,25 @@ class AdmitCtlr():
         self.wrench_sub = rospy.Subscriber('wrench_measurement', Wrench, self.wrench_callback)
         rospy.loginfo("Force subscriber node initialized.")
 
+        # Set up parameters
+        # Desired (reference) wrench
+        self.des_wrench = np.array([0, 0, 0, 0, 0, -0.02])
+        # Controller gain 
+        self.Kf = .5
+        # Selection matrix
+        self.l = np.diag([1, 0, 0, 0, 1, 1])
+
     def wrench_callback(self, wrench_msg):
         """
         Callback function to deal with incoming wrench messages
         """
         rospy.loginfo("Force subscriber received a wrench message!")
 
-        # Get information about the message
-        # forces = wrench_msg.force 
-        # moments = wrench_msg.torque
-        rospy.loginfo('Got {0}'.format(wrench_msg.force.x))
+        # Write the wrench_msg into an array
+        wrench = np.array([wrench_msg.torque.x, 0, 0, 0, wrench_msg.force.y, wrench_msg.force.z])
+        # 
+        d_xdes = -self.Kf*np.dot(self.l,self.des_wrench-wrench)
+        rospy.loginfo('Got {0}'.format(d_xdes))
 
 if __name__ == '__main__':
 
@@ -41,5 +50,5 @@ if __name__ == '__main__':
     rospy.init_node('imp_ctlr', argv=sys.argv)
 
     ctlr = AdmitCtlr()
-    
+
     rospy.spin()

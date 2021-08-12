@@ -23,12 +23,12 @@ class WrenchGenerator():
         rate = rospy.Rate(1)
 
         wrench = Wrench()
-        wrench.force.x = 1.0
+        wrench.force.x = 0.0
         wrench.force.y = 2.0
-        wrench.force.z = 3.0
+        wrench.force.z = -.02
         wrench.torque.x = 4.0
-        wrench.torque.y = 5.0
-        wrench.torque.z = 6.0
+        wrench.torque.y = 0.0
+        wrench.torque.z = 0.0
 
         # Send messages until the node is shut down
         while not rospy.is_shutdown():

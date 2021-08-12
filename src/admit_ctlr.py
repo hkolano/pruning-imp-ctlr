@@ -43,20 +43,20 @@ class AdmitCtlr():
         """
         Callback function to deal with incoming wrench messages
         """
-        rospy.loginfo("Force subscriber received a wrench message!")
+        # rospy.loginfo("Force subscriber received a wrench message!")
 
         # Write the wrench_msg into an array
-        wrench = np.array([wrench_msg.torque.x, 0, 0, 0, wrench_msg.force.y, wrench_msg.force.z])
-        rospy.loginfo('Got wrench {0}'.format(wrench))
+        wrench = np.array([wrench_msg.torque.x, wrench_msg.torque.y, wrench_msg.torque.z, wrench_msg.force.x, wrench_msg.force.y, wrench_msg.force.z])
+        rospy.loginfo('New wrench. \n Y force: {0} \n Z force: {1} \n X moment: {2}'.format(wrench[4], wrench[5], wrench[0]))
         # idealized velocities
         d_xdes = -self.Kf*np.dot(self.l,self.des_wrench-wrench)
-        rospy.loginfo(d_xdes.shape)
 
         # Set up the velocity command
         self.vel.header.stamp = rospy.Time.now()
         # rospy.loginfo(d_xdes[5])
         self.vel.vector = Vector3(0.0, d_xdes[4], d_xdes[5])
         self.vel_pub.publish(self.vel)
+        rospy.loginfo("Published vels: \n {}".format(self.vel.vector))
 
 if __name__ == '__main__':
 

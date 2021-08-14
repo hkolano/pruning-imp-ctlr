@@ -20,7 +20,7 @@ class AdmitCtlr():
         '''
 
         # Subscribe to wrist torque topic
-        self.wrench_sub = rospy.Subscriber('/wrench', WrenchStamped, self.wrench_callback)
+        self.wrench_sub = rospy.Subscriber('/wrench_filtered', WrenchStamped, self.wrench_callback)
         # Publish velocities to robot
         self.vel_pub = rospy.Publisher('/velproxy', Vector3Stamped, queue_size=5)
         rospy.loginfo("Force subscriber node initialized.")

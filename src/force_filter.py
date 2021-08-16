@@ -59,8 +59,8 @@ class ForceFilter():
 
         if self.counter > self.kernel*2:
 
-            # [filt_y, filt_z] = self.median_filter()
-            [filt_y, filt_z] = self.sos_filter()
+            [filt_y, filt_z] = self.median_filter()
+            # [filt_y, filt_z] = self.sos_filter()
 
             # rospy.loginfo("filtered values: {} and {}".format(filt_y, filt_z))
             # wrench_vec = np.array([w.torque.x, w.torque.y, w.torque.z, w.force.x, w.force.y, w.force.z])
@@ -102,6 +102,6 @@ if __name__ == '__main__':
     rospy.init_node('force_filter', argv=sys.argv)
 
     # input: kernel size
-    filter = ForceFilter(121)
+    filter = ForceFilter(51)
 
     rospy.spin()

@@ -5,7 +5,6 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-from scipy import signal
 from geometry_msgs.msg import Wrench, Vector3Stamped, Vector3, WrenchStamped
 
 class ForceFilter():
@@ -23,23 +22,6 @@ class ForceFilter():
         self.f_z_queue = np.zeros(kernel)
         rospy.loginfo("Filter running.")
 
-        samplerate = 500 #Hz
-        nyq = 0.5*samplerate
-        cut = 20/nyq 
-        # N, Wn = signal.buttord(1, 5, 3, 40, fs=500.0)
-        # N, Wn = signal.buttord(20, .125, 3, 40, 'True')
-        # rospy.loginfo('N = {}, wn = {}'.format(N, Wn))
-        # self.sos = signal.butter(N, Wn, analog='True', output='sos')
-        self.sos = signal.butter(3, 20*2*3.14, 'low', output='sos', analog=True)
-        # b, a = signal.butter(3, 20*2*3.14, 'low', analog=True)
-        # w, h = signal.freqs(b, a, np.logspace(-1,3,500))
-
-        # plt.semilogx(w, 20*np.log10(abs(h)))
-        # plt.title('Butterworth filter')
-        # plt.xlabel('Freq')
-        # plt.ylabel('Amp [dB]')
-        # plt.grid(which='both', axis='both')
-        # plt.show()
         self.counter = 0
 
     def wrench_callback(self, wrench_msg):
@@ -82,19 +64,6 @@ class ForceFilter():
         filt_z = np.mean(self.f_z_queue)
         return filt_y, filt_z
 
-    def sos_filter(self):
-        rospy.loginfo("original data: {}".format(self.f_y_queue))
-        plt.plot(np.linspace(0,self.kernel, self.kernel), self.f_y_queue)
-        filt_y = signal.sosfiltfilt(self.sos, self.f_y_queue)
-        rospy.loginfo("new data: {}".format(filt_y))
-        plt.plot(np.linspace(0,self.kernel, self.kernel), filt_y)
-        # plt.plot(np.linspace(0,self.kernel, self.kernel), filt_y)
-        # rospy.loginfo("OG: {}".format(self.f_y_queue))
-        # rospy.loginfo("new: {}".format(filt_y))
-        plt.show()
-        # sos_z = signal.butter(2, 20, output='sos', fs=500.0)
-        filt_z = signal.sosfiltfilt(self.sos, self.f_z_queue)
-        return filt_y[-2], filt_z[-2]
 
 if __name__ == '__main__':
 

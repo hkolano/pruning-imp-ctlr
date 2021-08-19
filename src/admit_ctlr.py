@@ -15,7 +15,7 @@ from std_srvs.srv import Empty
 
 class AdmitCtlr():
 
-    def __init__(self):
+    def __init__(self, is_connected):
         '''
         Set up subscriber to the force torque sensor
         '''
@@ -25,12 +25,13 @@ class AdmitCtlr():
         # Publish velocities to robot
         self.vel_pub = rospy.Publisher('/vel_command', Vector3Stamped, queue_size=5)
 	    # Set up servoing services
-    	servo_activate = rospy.ServiceProxy('/servo_activate', Empty)
-        servo_stop = rospy.ServiceProxy('/servo_stop', Empty)
+        if is_connected:
+    	    servo_activate = rospy.ServiceProxy('/servo_activate', Empty)
+            self.servo_stop = rospy.ServiceProxy('/servo_stop', Empty)
 
         # Set up parameters
         # Desired (reference) wrench
-        self.des_wrench = np.array([0, 0, 0, 0, 0, -1])
+        self.des_wrench = np.array([0, 0, 0, 0, 0, -1.5])
         # Controller gain 
         self.Kf = .05
         # Selection matrix
@@ -40,29 +41,59 @@ class AdmitCtlr():
         # Deadband (for wrench)
         self.f_thresh = 0.25 # 0.2 N (will ignore anything < .2N)
         self.last_dirs = ["stopped", "stopped"]
+	self.last_stop_condition = False
+        self.is_connected  = is_connected
 
         self.stop_force_thresh = 0.25
-        self.stop_torque_thresh = 0.02
+        self.stop_torque_thresh = 0.01
 
         self.vel = Vector3Stamped()
         self.vel.header.stamp = rospy.Time.now()
         self.vel.header.frame_id = 'tool0_controller'
         self.vel.vector = Vector3(0.0, 0.0, 0.0)
         
-        servo_activate()
+        if is_connected:
+            servo_activate()
 	    
         rospy.loginfo("Finished initializing admit ctlr node.")
 
-    def check_goal_state(self, wrench_vec):
+    def check_goal_state(self, wrench_vec, stop_f, stop_m):
+        '''
+        If the wrench is within desired parameters, stop servoing the robot.
+        '''
+        w_diff = self.des_wrench-wrench_vec
+	# rospy.loginfo("moment diff = %0.4f; force y diff: %0.3f", w_diff[0], w_diff[4])
 
-        pass
+        #if -stop_f < w_diff[4] < stop_f:
+        #    y_good = True
+        #if -stop_f < w_diff[5] < stop_f:
+        #    z_good = True
+        #if -stop_m < w_diff[0] < stop_m:
+        #    x_good = True
+	    # 
+
+        if -stop_f < w_diff[4] < stop_f and -stop_f < w_diff[5] < stop_f and -stop_m < w_diff[0] < stop_m:
+            stop_cond = True
+            #rospy.loginfo("CONDITIONS MET; STOPPING ROBOT!!!")
+            if self.is_connected:
+               	self.servo_stop()
+        else:
+            stop_cond = False
+	    	#rospy.loginfo("conditions not met")
+
+        if stop_cond != self.last_stop_condition:
+            if stop_cond == True:
+                rospy.loginfo("CONDITIONS MET; STOPPING ROBOT!!!")
+            else:
+                rospy.loginfo("conditions not met; running")
+        self.last_stop_condition = stop_cond
 
     def deadzone(self, wrench_in):
         ''' 
         Implement a "dead zone" for forces
         If the force in is less than the force threshold, sets force to 0
         '''
-        wrench_out = wrench_in
+        wrench_out = wrench_in.copy()
         for ind, f_in in enumerate(wrench_in):
             if f_in > self.f_thresh:
                 f_out = f_in-self.f_thresh
@@ -117,6 +148,7 @@ class AdmitCtlr():
         # Write the wrench_msg into an array
         w = wrench_msg.wrench
         wrench_vec = np.array([w.torque.x, w.torque.y, w.torque.z, w.force.x, w.force.y, w.force.z])
+	    # rospy.loginfo("checking wrench state: {}".format(wrench_vec))
         rospy.logdebug('New wrench. \n Y force: {0} \n Z force: {1} \n X moment: {2}'.format(wrench_vec[4], wrench_vec[5], wrench_vec[0]))
         
         # Admittance controller 
@@ -134,12 +166,16 @@ class AdmitCtlr():
 
         # Display human-readable controller directions to the terminal
         self.show_ctlr_direction(vel_y_limited, vel_z_limited)
+        
+        # rospy.loginfo("checking wrench state: {}".format(wrench_vec))
+        #Check for the stop condition
+        self.check_goal_state(wrench_vec, self.stop_force_thresh, self.stop_torque_thresh)
 
 if __name__ == '__main__':
 
     # Initialize node
-    rospy.init_node('imp_ctlr', argv=sys.argv)
+    rospy.init_node('admit_ctlr', argv=sys.argv)
 
-    ctlr = AdmitCtlr()
+    ctlr = AdmitCtlr(True)
 
     rospy.spin()

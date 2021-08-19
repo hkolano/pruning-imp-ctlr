@@ -2,9 +2,9 @@
 
 # Hannah Kolano kolanoh@oregonstate.edu
 #
-# Proxy for pruning project: subscribes to force data from UR5 
+# Pruning project: subscribes to wrench data from UR5 and publishes control velocities to cut a branch
 #
-# Last modified 8/11/2021 by Hannah
+# Last modified 8/19/2021 by Hannah
 
 import rospy
 import sys
@@ -20,7 +20,7 @@ class AdmitCtlr():
         Set up subscriber to the force torque sensor
         '''
 
-        # Subscribe to wrist torque topic
+        # Subscribe to wrist wrench topic
         self.wrench_sub = rospy.Subscriber('/wrench_filtered', WrenchStamped, self.wrench_callback)
         # Publish velocities to robot
         self.vel_pub = rospy.Publisher('/vel_command', Vector3Stamped, queue_size=5)
@@ -41,14 +41,21 @@ class AdmitCtlr():
         self.f_thresh = 0.25 # 0.2 N (will ignore anything < .2N)
         self.last_dirs = ["stopped", "stopped"]
 
+        self.stop_force_thresh = 0.25
+        self.stop_torque_thresh = 0.02
+
         self.vel = Vector3Stamped()
         self.vel.header.stamp = rospy.Time.now()
         self.vel.header.frame_id = 'tool0_controller'
         self.vel.vector = Vector3(0.0, 0.0, 0.0)
-
-	    servo_activate()
+        
+        servo_activate()
 	    
         rospy.loginfo("Finished initializing admit ctlr node.")
+
+    def check_goal_state(self, wrench_vec):
+
+        pass
 
     def deadzone(self, wrench_in):
         ''' 
@@ -111,19 +118,21 @@ class AdmitCtlr():
         w = wrench_msg.wrench
         wrench_vec = np.array([w.torque.x, w.torque.y, w.torque.z, w.force.x, w.force.y, w.force.z])
         rospy.logdebug('New wrench. \n Y force: {0} \n Z force: {1} \n X moment: {2}'.format(wrench_vec[4], wrench_vec[5], wrench_vec[0]))
-        # idealized velocities
+        
+        # Admittance controller 
         vel_des = -self.Kf*np.dot(self.l,self.des_wrench-self.deadzone(wrench_vec))
-        vel_y = vel_des[4]
-        vel_z = vel_des[5]
-        vel_y_limited = self.impose_vel_limit(vel_y)
-        vel_z_limited = self.impose_vel_limit(vel_z)
+
+        # Impose the velocity limit
+        vel_y_limited = self.impose_vel_limit(vel_des[4])
+        vel_z_limited = self.impose_vel_limit(vel_des[5])
 	
-        # Set up the velocity command
+        # Set up and publish the velocity command
         self.vel.header.stamp = rospy.Time.now()
-        # rospy.loginfo(d_xdes[5])
         self.vel.vector = Vector3(0.0, vel_y_limited, vel_z_limited)
         self.vel_pub.publish(self.vel)
         rospy.logdebug("Published vels: \n {}".format(self.vel.vector))
+
+        # Display human-readable controller directions to the terminal
         self.show_ctlr_direction(vel_y_limited, vel_z_limited)
 
 if __name__ == '__main__':

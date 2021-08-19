@@ -7,8 +7,9 @@
 
 import rospy
 import sys
+from random import uniform
 
-from geometry_msgs.msg import Wrench
+from geometry_msgs.msg import WrenchStamped
 
 class WrenchGenerator():
     '''
@@ -16,26 +17,29 @@ class WrenchGenerator():
     '''
     def __init__(self):
         # Set up the pubslisher
-        self.wrench_pub = rospy.Publisher('wrench_measurement', Wrench, queue_size=10)
+        self.wrench_pub = rospy.Publisher('wrench', WrenchStamped, queue_size=10)
         # self.wrench_pub = rospy.Publisher('wrench_measurement', Int64, queue_size=10)
         rospy.loginfo("Force Generator node started")
 
-        rate = rospy.Rate(1)
+        rate = rospy.Rate(10)
 
-        wrench = Wrench()
-        wrench.force.x = 0.0
-        wrench.force.y = 2.0
-        wrench.force.z = -.02
-        wrench.torque.x = 4.0
-        wrench.torque.y = 0.0
-        wrench.torque.z = 0.0
+        wrench_stamped = WrenchStamped()
+        w = wrench_stamped.wrench
+        w.force.x = 0.0
+        w.torque.y = 0.0
+        w.torque.z = 0.0
+        wrench_stamped.header.frame_id = 'tool0_controller'
 
         # Send messages until the node is shut down
         while not rospy.is_shutdown():
             # Publish the value of the counter
-            self.wrench_pub.publish(wrench)
+            w.force.y = uniform(-2, 2)
+            w.force.z = uniform(-1, 1)
+            w.torque.x = uniform(-.1, .1)
+            wrench_stamped.header.stamp = rospy.Time.now()
+            self.wrench_pub.publish(wrench_stamped)
 
-            rospy.loginfo('Published {0}'.format(wrench))
+            # rospy.loginfo('Published {0}'.format(wrench))
 
             rate.sleep()
 

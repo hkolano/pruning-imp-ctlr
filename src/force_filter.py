@@ -20,6 +20,7 @@ class ForceFilter():
 
         self.f_y_queue = np.zeros(kernel)
         self.f_z_queue = np.zeros(kernel)
+        self.m_x_queue = np.zeros(kernel)
         rospy.loginfo("Filter running.")
 
         self.counter = 0
@@ -34,35 +35,40 @@ class ForceFilter():
         w = wrench_msg.wrench
         self.f_y_queue = np.append(self.f_y_queue, w.force.y)
         self.f_z_queue = np.append(self.f_z_queue, w.force.z)
+        self.m_x_queue = np.append(self.m_x_queue, w.torque.x)
         self.f_y_queue = np.delete(self.f_y_queue, 0)
         self.f_z_queue = np.delete(self.f_z_queue, 0)
+        self.m_x_queue = np.delete(self.m_x_queue, 0)
 
         self.counter +=1 
 
         if self.counter > self.kernel*2:
-
-            [filt_y, filt_z] = self.median_filter()
-            # [filt_y, filt_z] = self.sos_filter()
-
-            # rospy.loginfo("filtered values: {} and {}".format(filt_y, filt_z))
-            # wrench_vec = np.array([w.torque.x, w.torque.y, w.torque.z, w.force.x, w.force.y, w.force.z])
-            # rospy.logdebug('New wrench. \n Y force: {0} \n Z force: {1} \n X moment: {2}'.format(wrench_vec[4], wrench_vec[5], wrench_vec[0]))
+            # Filter Fy, Fz, and Mx
+            [filt_y, filt_z, filt_Mx] = self.median_filter()
         
             # Set up the wrench output
             self.new_wrench.header = wrench_msg.header
-            # self.new_wrench.header.stamp = rospy.Time.now()
-            # forward the torques (not used for the controller)
-            self.new_wrench.wrench.torque = w.torque
-            self.new_wrench.wrench.force.x = w.force.x
+            self.new_wrench.header.stamp = rospy.Time.now()
+
+            # forward the wrenches not used by the controller
+            self.new_wrench.wrench = w
+
+            # write filtered wrench data to messsage
+            self.new_wrench.wrench.torque.x = filt_Mx
             self.new_wrench.wrench.force.y = filt_y
             self.new_wrench.wrench.force.z = filt_z
-            # rospy.loginfo("publishing new wrench")
+
+            # Publish the new wrench
             self.wrench_pub.publish(self.new_wrench)
 
     def median_filter(self):
+        '''
+        Returns the mean value of the data in the queue.
+        '''
         filt_y = np.mean(self.f_y_queue)
         filt_z = np.mean(self.f_z_queue)
-        return filt_y, filt_z
+        filt_Mx = np.mean(self.m_x_queue)
+        return filt_y, filt_z, filt_Mx
 
 
 if __name__ == '__main__':

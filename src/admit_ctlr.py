@@ -11,6 +11,7 @@ import sys
 import numpy as np
 
 from geometry_msgs.msg import Wrench, Vector3Stamped, Vector3, WrenchStamped
+from std_srvs.srv import Empty
 
 class AdmitCtlr():
 
@@ -22,7 +23,10 @@ class AdmitCtlr():
         # Subscribe to wrist torque topic
         self.wrench_sub = rospy.Subscriber('/wrench_filtered', WrenchStamped, self.wrench_callback)
         # Publish velocities to robot
-        self.vel_pub = rospy.Publisher('/velproxy', Vector3Stamped, queue_size=5)
+        self.vel_pub = rospy.Publisher('/vel_command', Vector3Stamped, queue_size=5)
+	    # Set up servoing services
+    	servo_activate = rospy.ServiceProxy('/servo_activate', Empty)
+        servo_stop = rospy.ServiceProxy('/servo_stop', Empty)
 
         # Set up parameters
         # Desired (reference) wrench
@@ -34,13 +38,15 @@ class AdmitCtlr():
         # Velocity limit
         self.vel_lim = 0.01 # 1 cm/s
         # Deadband (for wrench)
-        self.f_thresh = 0.2 # 0.2 N (will ignore anything < .2N)
+        self.f_thresh = 0.25 # 0.2 N (will ignore anything < .2N)
         self.last_dirs = ["stopped", "stopped"]
 
         self.vel = Vector3Stamped()
         self.vel.header.stamp = rospy.Time.now()
         self.vel.header.frame_id = 'tool0_controller'
         self.vel.vector = Vector3(0.0, 0.0, 0.0)
+
+	    servo_activate()
 	    
         rospy.loginfo("Finished initializing admit ctlr node.")
 

@@ -176,6 +176,6 @@ if __name__ == '__main__':
     # Initialize node
     rospy.init_node('admit_ctlr', argv=sys.argv)
 
-    ctlr = AdmitCtlr(True)
+    ctlr = AdmitCtlr(False)
 
     rospy.spin()
